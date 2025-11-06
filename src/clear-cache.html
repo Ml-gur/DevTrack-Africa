@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevTrack - Clear Cache</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            margin-top: 0;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        button.danger {
+            background: #dc2626;
+        }
+        button.danger:hover {
+            background: #b91c1c;
+        }
+        button.success {
+            background: #16a34a;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+        .status.success {
+            background: #d1fae5;
+            border: 1px solid #16a34a;
+            color: #065f46;
+        }
+        .status.info {
+            background: #dbeafe;
+            border: 1px solid #2563eb;
+            color: #1e40af;
+        }
+        .instructions {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #92400e;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+            color: #78350f;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 DevTrack Africa - Cache Cleaner</h1>
+        <p>Use this tool to clear all caches and force load the latest code changes.</p>
+
+        <div class="instructions">
+            <h3>⚠️ Why do I need this?</h3>
+            <p>The PWA Service Worker caches files for offline use. When we update code, you need to clear these caches to see the changes.</p>
+        </div>
+
+        <h2>Step 1: Unregister Service Workers</h2>
+        <button id="unregisterSW">Unregister All Service Workers</button>
+        <button id="checkSW" class="success">Check Service Workers</button>
+
+        <h2>Step 2: Clear All Caches</h2>
+        <button id="clearCaches" class="danger">Clear All Caches</button>
+        <button id="listCaches" class="success">List Caches</button>
+
+        <h2>Step 3: Reload</h2>
+        <button id="hardReload" class="success">Hard Reload App</button>
+
+        <div id="status" class="status"></div>
+
+        <div class="instructions" style="margin-top: 30px;">
+            <h3>📝 Manual Steps (if buttons don't work):</h3>
+            <ol>
+                <li>Press <code>F12</code> to open Developer Tools</li>
+                <li>Go to <strong>Application</strong> tab</li>
+                <li>In left sidebar, click <strong>Service Workers</strong></li>
+                <li>Click <strong>Unregister</strong> for each worker</li>
+                <li>Click <strong>Cache Storage</strong> in left sidebar</li>
+                <li>Right-click each cache and select <strong>Delete</strong></li>
+                <li>Press <code>Ctrl+Shift+R</code> (Windows) or <code>Cmd+Shift+R</code> (Mac)</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+
+        function showStatus(message, type = 'info') {
+            statusDiv.className = `status show ${type}`;
+            statusDiv.textContent = message;
+            console.log(message);
+        }
+
+        // Unregister service workers
+        document.getElementById('unregisterSW').addEventListener('click', async () => {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    if (registrations.length === 0) {
+                        showStatus('✅ No service workers registered', 'success');
+                        return;
+                    }
+                    
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                    }
+                    showStatus(`✅ Unregistered ${registrations.length} service worker(s)`, 'success');
+                } else {
+                    showStatus('❌ Service Workers not supported', 'info');
+                }
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'info');
+            }
+        });
+
+        // Check service workers
+        document.getElementById('checkSW').addEventListener('click', async () => {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    if (registrations.length === 0) {
+                        showStatus('✅ No service workers currently registered', 'success');
+                    } else {
+                        showStatus(`ℹ️ Found ${registrations.length} service worker(s):\n` + 
+                                 registrations.map(r => r.scope).join('\n'), 'info');
+                    }
+                } else {
+                    showStatus('Service Workers not supported', 'info');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'info');
+            }
+        });
+
+        // Clear all caches
+        document.getElementById('clearCaches').addEventListener('click', async () => {
+            try {
+                const cacheNames = await caches.keys();
+                if (cacheNames.length === 0) {
+                    showStatus('✅ No caches found', 'success');
+                    return;
+                }
+                
+                for (const cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    console.log(`Deleted cache: ${cacheName}`);
+                }
+                showStatus(`✅ Deleted ${cacheNames.length} cache(s)`, 'success');
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'info');
+            }
+        });
+
+        // List caches
+        document.getElementById('listCaches').addEventListener('click', async () => {
+            try {
+                const cacheNames = await caches.keys();
+                if (cacheNames.length === 0) {
+                    showStatus('✅ No caches currently stored', 'success');
+                } else {
+                    showStatus(`ℹ️ Found ${cacheNames.length} cache(s):\n` + 
+                             cacheNames.join('\n'), 'info');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'info');
+            }
+        });
+
+        // Hard reload
+        document.getElementById('hardReload').addEventListener('click', () => {
+            showStatus('🔄 Reloading...', 'info');
+            setTimeout(() => {
+                window.location.href = '/';
+                window.location.reload(true);
+            }, 500);
+        });
+
+        // Auto-check on load
+        window.addEventListener('load', async () => {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                const cacheNames = await caches.keys();
+                console.log(`Service Workers: ${registrations.length}`);
+                console.log(`Caches: ${cacheNames.length}`);
+                console.log('Cache names:', cacheNames);
+            }
+        });
+    </script>
+</body>
+</html>
